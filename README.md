@@ -2,7 +2,7 @@
 
 *The backend server for phUNO*
 
-phDOS uses web sockets to communicate with clients. Data is stored in a document (MongoDB) database.
+phDOS uses web sockets to communicate with clients.
 
 ## Structure
 - `entry.ts`: start server
