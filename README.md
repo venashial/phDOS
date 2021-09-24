@@ -24,5 +24,5 @@ phDOS uses web sockets to communicate with clients.
 In cloned repository, run
 
 ```bash
-deno run --allow-net --watch entry.ts  
+deno run --allow-net --watch --unstable entry.ts  
 ```
