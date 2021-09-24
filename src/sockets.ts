@@ -31,11 +31,15 @@ async function handleWs(sock: WebSocket) {
       if (typeof ev === 'string') {
         // text message
         try {
-          const data: { route: keyof typeof routes; body: Record<string, unknown> } =
+          const data: { route: keyof typeof routes, body: Record<string, unknown>, secret?: string } =
             JSON.parse(ev)
-          await routes[data.route]({ body: data.body, socket })
+          if (data.route !== 'register' && (!socket.secret || !data.secret || socket.secret !== data.secret)) {
+            socket.json({ error: 'Not authorized or invalid secret.' })
+          } else {
+            await routes[data.route]({ body: data.body, socket })
+          }
         } catch (e) {
-          sock.send(JSON.stringify({ error: e.message }))
+          socket.json({ error: e.message })
         }
       } else if (ev instanceof Uint8Array) {
         // binary message
