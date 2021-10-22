@@ -1,5 +1,7 @@
-export default function newDeck() {
-  const cards: Record<string, Record<string, string | number>> = {}
+import { Stack } from '../types.ts'
+
+export default function newDeck(): Stack {
+  const cards: Stack = {}
 
   const colors: Array<string> = ['red', 'yellow', 'green', 'blue']
   const distribution: Record<number | string, number> = {
@@ -17,7 +19,11 @@ export default function newDeck() {
     r: 2,
     '+2': 2,
   }
-  const specials: Array<Record<string, string | number>> = [
+  const specials: Array<{
+    color: string
+    symbol: string
+    count: number
+  }> = [
     {
       color: 'black',
       symbol: '+4',

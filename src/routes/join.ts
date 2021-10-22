@@ -1,8 +1,11 @@
 import { Route } from '../types.ts'
 import validateNickname from '../lib/validateNickname.ts'
+import generateSecret from '../lib/generateSecret.ts'
+import { rooms } from '../db.ts'
+import { sockets } from '../sockets.ts'
 
-export default ({ body, socket }: Route): void => {
-  if (body.nickname && typeof body.nickname === 'string') {
+export default async ({ body, socket }: Route): Promise<void> => {
+  if (body?.nickname && typeof body.nickname === 'string') {
     if (!validateNickname(body.nickname)) {
       socket.json({
         error:
@@ -15,20 +18,41 @@ export default ({ body, socket }: Route): void => {
     return
   }
 
-  // TODO: Join to database
+  if (typeof body.code !== 'string') {
+    socket.json({ error: 'Missing room code' })
+    return
+  }
 
-  // TODO: Set recovery
+  const room = await rooms.findOne({ code: body.code })
 
-  /*
-  socket.json({
-    type: 'update',
-    store: 'code',
-    data: body.code,
+  if (room === null) {
+    socket.json({ error: "That room doesn't exist" })
+    return
+  }
+
+  room.players[socket.secret] = {
+    nickname: body.nickname,
+    recovery: body.code + generateSecret(),
+    hand: {},
+    isHost: false,
+  }
+
+  room.lastActivity = (new Date(Date.now())).toISOString()
+  rooms.updateOne({ code: body.code }, room)
+
+  socket.updates([
+    ['code', room.code],
+    ['recovery', room.players[socket.secret].recovery],
+    ['state', 'lobby'],
+    ['nickname', body.nickname],
+  ])
+  Object.keys(room.players).forEach(player => {
+    sockets.get(player)?.updates([[
+      'players',
+      Object.values(room.players).map((player) => ({
+        nickname: player.nickname,
+        count: Object.keys(player.hand).length,
+      })),
+    ],])
   })
-  socket.json({
-    type: 'update',
-    store: 'recovery',
-    data: room.players[socket.secret].recovery,
-  })
-  */
 }

@@ -8,33 +8,68 @@ import {
 
 import { Socket } from './types.ts'
 
+import { rooms } from './db.ts'
+
 // Route imports
 import register from './routes/register.ts'
 import create from './routes/create.ts'
 import join from './routes/join.ts'
+import move from './routes/move.ts'
+import kick from './routes/kick.ts'
+import leave from './routes/leave.ts'
 
 const routes = {
   register,
   create,
   join,
+  move,
+  kick,
+  leave,
 }
 
-export const sockets = new Map<string, WebSocket>()
+export const sockets = new Map<string, Socket>()
 
 async function handleWs(sock: WebSocket) {
   const socket: Socket = Object.assign(sock)
   socket.json = function (data: unknown) {
     this.send(JSON.stringify(data))
   }
+  socket.updates = function (updates) {
+    updates.forEach(([store, data]) => {
+      this.json({
+        type: 'update',
+        store,
+        data,
+      })
+    })
+  }
   try {
     for await (const ev of sock) {
       if (typeof ev === 'string') {
         // text message
         try {
-          const data: { route: keyof typeof routes, body: Record<string, unknown>, secret?: string } =
-            JSON.parse(ev)
-          if (data.route !== 'register' && (!socket.secret || !data.secret || socket.secret !== data.secret)) {
+          const data: {
+            route: keyof typeof routes
+            body: Record<string, unknown>
+            secret?: string
+          } = JSON.parse(ev)
+          if /*
+          (
+            data.route !== 'register' &&
+            (!socket.secret || !data.secret || socket.secret !== data.secret)
+          ) {
             socket.json({ error: 'Not authorized or invalid secret.' })
+          } else if
+          */ (
+            !['create', 'register'].includes(data.route) &&
+            typeof data.body.code !== 'string'
+          ) {
+            socket.json({ error: 'Missing room code.' })
+          } else if (
+            !['create', 'register'].includes(data.route) && typeof data.body.code === 'string' &&
+            (await rooms.count({ code: data.body.code })) === 0
+          ) {
+            socket.json({ error: "That room doesn't exist." })
           } else {
             await routes[data.route]({ body: data.body, socket })
           }

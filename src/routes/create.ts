@@ -3,8 +3,9 @@ import getCode from '../lib/getCode.ts'
 import makeDeck from '../lib/makeDeck.ts'
 import validateNickname from '../lib/validateNickname.ts'
 import generateSecret from '../lib/generateSecret.ts'
+import { rooms } from '../db.ts'
 
-export default ({ body, socket }: Route): void => {
+export default async ({ body, socket }: Route): Promise<void> => {
   if (body.nickname && typeof body.nickname === 'string') {
     if (!validateNickname(body.nickname)) {
       socket.json({
@@ -18,14 +19,18 @@ export default ({ body, socket }: Route): void => {
     return
   }
 
+  const code = await getCode()
+
   const room = {
-    code: getCode(),
-    lastActivity: Date.now(),
+    code,
+    lastActivity: (new Date(Date.now())).toISOString(),
     state: 'lobby',
     players: {
       [socket.secret]: {
         nickname: body.nickname,
-        recovery: generateSecret(),
+        recovery: code + generateSecret(),
+        hand: {},
+        isHost: true,
       },
     },
     piles: {
@@ -35,16 +40,19 @@ export default ({ body, socket }: Route): void => {
     log: [],
   }
 
-  // TODO: Add to database
+  await rooms.insertOne(room)
 
-  socket.json({
-    type: 'update',
-    store: 'code',
-    data: room.code,
-  })
-  socket.json({
-    type: 'update',
-    store: 'recovery',
-    data: room.players[socket.secret].recovery,
-  })
+  socket.updates([
+    ['code', room.code],
+    ['recovery', room.players[socket.secret].recovery],
+    [
+      'players',
+      Object.values(room.players).map((player) => ({
+        nickname: player.nickname,
+        count: Object.keys(player.hand).length,
+      })),
+    ],
+    ['state', 'lobby'],
+    ['nickname', body.nickname],
+  ])
 }
