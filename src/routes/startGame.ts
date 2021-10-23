@@ -1,22 +1,32 @@
-import { Route } from '../types.ts'
+import { RoomRoute, Stack } from '../types.ts'
 import { rooms } from '../db.ts'
+import { sockets } from '../sockets.ts'
 
-export default async ({ body, socket }: Route): Promise<void> => {
-  // @ts-ignore: Doesn't know that body.code was already checked
-  const room = await rooms.findOne({ code: body.code })
-
-  
+export default async ({ body, socket, room, code }: RoomRoute): Promise<void> => {
 
   /*
-  socket.json({
-    type: 'update',
-    store: 'code',
-    data: body.code,
-  })
-  socket.json({
-    type: 'update',
-    store: 'recovery',
-    data: room.players[socket.secret].recovery,
+  Object.keys(room.players).forEach(player => {
+    const hand: Stack = {}
+    const cards = deckArray.splice(0, 6)
+    cards.forEach((card, index) => {
+      hand[index] = deck[index]
+    })
+    console.log(hand)
+    room.players[player].hand = hand
   })
   */
+
+  room.state = 'game'
+
+  room.lastActivity = new Date(Date.now()).toISOString()
+  rooms.updateOne({ code }, room)
+
+  Object.keys(room.players).forEach((player) => {
+    sockets.get(player)?.updates([
+      [
+        'state',
+        'game'
+      ]
+    ])
+  })
 }

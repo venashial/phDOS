@@ -1,25 +1,10 @@
-import { Route, Card } from '../types.ts'
+import { RoomRoute, Card } from '../types.ts'
 import { rooms } from '../db.ts'
+import { sockets } from '../sockets.ts'
 
 /** Move a card to and from: a player's hand, the discard pile, & the draw pile */
-export default async ({ body, socket }: Route): Promise<void> => {
-  if (typeof body.code !== 'string') {
-    socket.json({ error: 'Missing room code' })
-    return
-  }
-
-  const room = await rooms.findOne({ code: body.code })
-
-  if (room === null) {
-    socket.json({ error: "That room doesn't exist" })
-    return
-  }
-
-  if (!Object.keys(room.players).includes(socket.secret)) {
-    socket.json({ error: "You are't in that room" })
-    return
-  }
-
+export default async ({ body, socket, room, code }: RoomRoute): Promise<void> => {
+  console.log(body)
   let movedCard: Card | undefined = undefined
   let cardIndex = ''
   const logMessage: string[] = []
@@ -31,11 +16,15 @@ export default async ({ body, socket }: Route): Promise<void> => {
     delete room.piles.draw[cardIndex]
     logMessage[1] = 'drew a card'
   } else if (body.source === 'discard') {
-    cardIndex = Object.keys(room.piles.discard)[0]
+    console.log(room)
+    const discardArray = Object.keys(room.piles.discard)
+    console.log(discardArray)
+    cardIndex = discardArray[discardArray.length - 1]
+    console.log(cardIndex)
     movedCard = room.piles.discard[cardIndex]
     delete room.piles.discard[cardIndex]
     logMessage[1] = 'took a card from the discard pile'
-  } else if (body.source === 'self' && typeof body.cardIndex === 'string') {
+  } else if (body.source === 'hand' && typeof body.cardIndex === 'string') {
     cardIndex = body.cardIndex
     movedCard = room.players[socket.secret].hand[cardIndex]
     delete room.players[socket.secret].hand[cardIndex]
@@ -48,24 +37,44 @@ export default async ({ body, socket }: Route): Promise<void> => {
   }
 
   if (body.destination === 'draw') {
-    room.piles.draw = { cardIndex: movedCard, ...room.piles.draw }
+    room.piles.draw = { [cardIndex]: movedCard, ...room.piles.draw }
     logMessage[2] = 'and put it in the draw pile'
   } else if (body.destination === 'discard') {
-    room.piles.discard = { cardIndex: movedCard, ...room.piles.discard }
+    room.piles.discard = { [cardIndex]: movedCard, ...room.piles.discard }
     logMessage[2] = 'to the discard pile'
-  } else if (body.destination === 'self') {
+  } else if (body.destination === 'hand') {
     room.players[socket.secret].hand[cardIndex] = movedCard
     logMessage[2] = 'to their hand'
   }
 
   room.lastActivity = (new Date(Date.now())).toISOString()
-  rooms.updateOne({ code: body.code }, room)
+  rooms.updateOne({ code }, room)
 
-  /*
-  socket.json({
-    type: 'update',
-    store: 'code',
-    data: body.code,
+  if ([body.destination, body.source].includes('discard')) {
+    Object.keys(room.players).forEach((player) => {
+      sockets.get(player)?.updates([
+        [
+          'discard',
+          room.piles.discard
+        ],
+      ])
+    })
+  }
+
+  if ([body.destination, body.source].includes('hand')) {
+    socket.updates([['hand', room.players[socket.secret].hand]])
+  }
+
+  Object.keys(room.players).forEach((player) => {
+    sockets.get(player)?.updates([
+      [
+        'players',
+        Object.values(room.players).map((player) => ({
+          nickname: player.nickname,
+          count: Object.keys(player.hand).length,
+          isHost: player.isHost,
+        })),
+      ],
+    ])
   })
-  */
 }

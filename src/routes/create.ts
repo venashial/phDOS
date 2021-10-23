@@ -1,9 +1,11 @@
 import { Route } from '../types.ts'
 import getCode from '../lib/getCode.ts'
-import makeDeck from '../lib/makeDeck.ts'
 import validateNickname from '../lib/validateNickname.ts'
 import generateSecret from '../lib/generateSecret.ts'
 import { rooms } from '../db.ts'
+import makeDeck from '../lib/makeDeck.ts'
+import shuffle from '../lib/shuffle.ts'
+import dealCards from '../lib/dealCards.ts'
 
 export default async ({ body, socket }: Route): Promise<void> => {
   if (body.nickname && typeof body.nickname === 'string') {
@@ -35,10 +37,15 @@ export default async ({ body, socket }: Route): Promise<void> => {
     },
     piles: {
       discard: {},
-      draw: makeDeck(),
+      draw: shuffle(makeDeck()),
     },
     log: [],
   }
+
+  const { draw, hand } = dealCards(room.piles.draw)
+
+  room.players[socket.secret].hand = hand
+  room.piles.draw = draw
 
   await rooms.insertOne(room)
 
@@ -50,9 +57,11 @@ export default async ({ body, socket }: Route): Promise<void> => {
       Object.values(room.players).map((player) => ({
         nickname: player.nickname,
         count: Object.keys(player.hand).length,
+        isHost: player.isHost,
       })),
     ],
     ['state', 'lobby'],
     ['nickname', body.nickname],
+    ['hand', room.players[socket.secret].hand],
   ])
 }

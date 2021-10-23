@@ -17,6 +17,7 @@ import join from './routes/join.ts'
 import move from './routes/move.ts'
 import kick from './routes/kick.ts'
 import leave from './routes/leave.ts'
+import startGame from './routes/startGame.ts'
 
 const routes = {
   register,
@@ -25,6 +26,7 @@ const routes = {
   move,
   kick,
   leave,
+  startGame,
 }
 
 export const sockets = new Map<string, Socket>()
@@ -53,25 +55,33 @@ async function handleWs(sock: WebSocket) {
             body: Record<string, unknown>
             secret?: string
           } = JSON.parse(ev)
-          if /*
-          (
-            data.route !== 'register' &&
-            (!socket.secret || !data.secret || socket.secret !== data.secret)
-          ) {
-            socket.json({ error: 'Not authorized or invalid secret.' })
-          } else if
-          */ (
-            !['create', 'register'].includes(data.route) &&
-            typeof data.body.code !== 'string'
-          ) {
-            socket.json({ error: 'Missing room code.' })
+
+          if (['create', 'register', 'join'].includes(data.route)) {
+              // @ts-ignore: Route is already limited to not RoomRoutes
+              await routes[data.route]({ body: data.body, socket })
           } else if (
-            !['create', 'register'].includes(data.route) && typeof data.body.code === 'string' &&
+            typeof data.body.code === 'string' &&
             (await rooms.count({ code: data.body.code })) === 0
           ) {
             socket.json({ error: "That room doesn't exist." })
           } else {
-            await routes[data.route]({ body: data.body, socket })
+            if (typeof data.body.code !== 'string') {
+              socket.json({ error: "That room doesn't exist." })
+              return
+            }
+            const room = await rooms.findOne({ code: data.body.code })
+
+            if (room === null) {
+              socket.json({ error: "That room doesn't exist" })
+              return
+            }
+          
+            if (!Object.keys(room.players).includes(socket.secret)) {
+              socket.json({ error: "You are't in that room" })
+              return
+            }
+
+            await routes[data.route]({ body: data.body, socket, room, code: data.body.code })
           }
         } catch (e) {
           socket.json({ error: e.message })

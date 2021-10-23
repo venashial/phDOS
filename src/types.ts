@@ -11,6 +11,13 @@ export interface Route {
   socket: Socket
 }
 
+export interface RoomRoute {
+  body: Record<string, unknown>,
+  socket: Socket,
+  room: Room,
+  code: string,
+}
+
 export interface Card {
   color: string,
   symbol: string,

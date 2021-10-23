@@ -3,6 +3,7 @@ import validateNickname from '../lib/validateNickname.ts'
 import generateSecret from '../lib/generateSecret.ts'
 import { rooms } from '../db.ts'
 import { sockets } from '../sockets.ts'
+import dealCards from '../lib/dealCards.ts'
 
 export default async ({ body, socket }: Route): Promise<void> => {
   if (body?.nickname && typeof body.nickname === 'string') {
@@ -37,14 +38,20 @@ export default async ({ body, socket }: Route): Promise<void> => {
     isHost: false,
   }
 
+  const { draw, hand } = dealCards(room.piles.draw)
+
+  room.players[socket.secret].hand = hand
+  room.piles.draw = draw
+
   room.lastActivity = (new Date(Date.now())).toISOString()
   rooms.updateOne({ code: body.code }, room)
 
   socket.updates([
     ['code', room.code],
     ['recovery', room.players[socket.secret].recovery],
-    ['state', 'lobby'],
+    ['state', room.state],
     ['nickname', body.nickname],
+    ['hand', room.players[socket.secret].hand],
   ])
   Object.keys(room.players).forEach(player => {
     sockets.get(player)?.updates([[
@@ -52,6 +59,7 @@ export default async ({ body, socket }: Route): Promise<void> => {
       Object.values(room.players).map((player) => ({
         nickname: player.nickname,
         count: Object.keys(player.hand).length,
+        isHost: player.isHost,
       })),
     ],])
   })
