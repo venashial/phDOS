@@ -96,7 +96,7 @@ async function handleWs(sock: WebSocket) {
       } else if (isWebSocketCloseEvent(ev)) {
         // close
         const { code, reason } = ev
-        console.log('ws:Close', code, reason)
+        console.log('Websocket closed', code, reason)
         if (socket.secret) {
           sockets.delete(socket.secret)
         }

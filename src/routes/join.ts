@@ -36,6 +36,7 @@ export default async ({ body, socket }: Route): Promise<void> => {
     recovery: body.code + generateSecret(),
     hand: {},
     isHost: false,
+    connected: true,
   }
 
   const { draw, hand } = dealCards(room.piles.draw)
@@ -52,6 +53,7 @@ export default async ({ body, socket }: Route): Promise<void> => {
     ['state', room.state],
     ['nickname', body.nickname],
     ['hand', room.players[socket.secret].hand],
+    ['discard', room.piles.discard],
   ])
   Object.keys(room.players).forEach(player => {
     sockets.get(player)?.updates([[
@@ -60,6 +62,7 @@ export default async ({ body, socket }: Route): Promise<void> => {
         nickname: player.nickname,
         count: Object.keys(player.hand).length,
         isHost: player.isHost,
+        connected: player.connected,
       })),
     ],])
   })

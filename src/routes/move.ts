@@ -3,8 +3,7 @@ import { rooms } from '../db.ts'
 import { sockets } from '../sockets.ts'
 
 /** Move a card to and from: a player's hand, the discard pile, & the draw pile */
-export default async ({ body, socket, room, code }: RoomRoute): Promise<void> => {
-  console.log(body)
+export default ({ body, socket, room, code }: RoomRoute): void => {
   let movedCard: Card | undefined = undefined
   let cardIndex = ''
   const logMessage: string[] = []
@@ -16,11 +15,7 @@ export default async ({ body, socket, room, code }: RoomRoute): Promise<void> =>
     delete room.piles.draw[cardIndex]
     logMessage[1] = 'drew a card'
   } else if (body.source === 'discard') {
-    console.log(room)
-    const discardArray = Object.keys(room.piles.discard)
-    console.log(discardArray)
-    cardIndex = discardArray[discardArray.length - 1]
-    console.log(cardIndex)
+    cardIndex = Object.keys(room.piles.discard)[0]
     movedCard = room.piles.discard[cardIndex]
     delete room.piles.discard[cardIndex]
     logMessage[1] = 'took a card from the discard pile'
@@ -47,34 +42,31 @@ export default async ({ body, socket, room, code }: RoomRoute): Promise<void> =>
     logMessage[2] = 'to their hand'
   }
 
-  room.lastActivity = (new Date(Date.now())).toISOString()
+  room.lastActivity = new Date(Date.now()).toISOString()
   rooms.updateOne({ code }, room)
 
   if ([body.destination, body.source].includes('discard')) {
     Object.keys(room.players).forEach((player) => {
-      sockets.get(player)?.updates([
-        [
-          'discard',
-          room.piles.discard
-        ],
-      ])
+      sockets.get(player)?.updates([['discard', room.piles.discard]])
     })
   }
 
-  if ([body.destination, body.source].includes('hand')) {
-    socket.updates([['hand', room.players[socket.secret].hand]])
-  }
+  socket.updates([['hand', room.players[socket.secret].hand]])
 
   Object.keys(room.players).forEach((player) => {
-    sockets.get(player)?.updates([
-      [
-        'players',
-        Object.values(room.players).map((player) => ({
-          nickname: player.nickname,
-          count: Object.keys(player.hand).length,
-          isHost: player.isHost,
-        })),
-      ],
-    ])
+    const playerSocket = sockets.get(player)
+    if (playerSocket) {
+      playerSocket.updates([
+        [
+          'players',
+          Object.values(room.players).map((player) => ({
+            nickname: player.nickname,
+            count: Object.keys(player.hand).length,
+            isHost: player.isHost,
+            connected: player.connected,
+          })),
+        ],
+      ])
+    }
   })
 }

@@ -36,6 +36,7 @@ export interface Room {
       recovery: string,
       hand: Stack,
       isHost: boolean,
+      connected: boolean,
     }
   >,
   piles: {

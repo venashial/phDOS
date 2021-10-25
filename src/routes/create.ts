@@ -33,6 +33,7 @@ export default async ({ body, socket }: Route): Promise<void> => {
         recovery: code + generateSecret(),
         hand: {},
         isHost: true,
+        connected: true,
       },
     },
     piles: {
@@ -58,6 +59,7 @@ export default async ({ body, socket }: Route): Promise<void> => {
         nickname: player.nickname,
         count: Object.keys(player.hand).length,
         isHost: player.isHost,
+        connected: player.connected,
       })),
     ],
     ['state', 'lobby'],

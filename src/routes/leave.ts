@@ -57,6 +57,7 @@ export default async ({ body, socket, room, code }: RoomRoute): Promise<void> =>
           nickname: player.nickname,
           count: Object.keys(player.hand).length,
           isHost: player.isHost,
+          connected: player.connected,
         })),
       ],
     ])

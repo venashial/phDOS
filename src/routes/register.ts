@@ -26,12 +26,14 @@ export default async ({ body, socket }: Route): Promise<void> => {
             ['nickname', room.players[socket.secret].nickname],
             ['isHost', room.players[socket.secret].isHost],
             ['hand', room.players[socket.secret].hand],
+            ['discard', room.piles.discard],
             [
               'players',
               Object.values(room.players).map((player) => ({
                 nickname: player.nickname,
                 count: Object.keys(player.hand).length,
                 isHost: player.isHost,
+                connected: player.connected,
               })),
             ]
           ])
