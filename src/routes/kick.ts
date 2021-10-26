@@ -23,7 +23,7 @@ export default ({ body, socket, room, code }: RoomRoute): void => {
   const targetSocket = sockets.get(target[0])
 
   if (targetSocket !== undefined) {
-    if (!targetSocket.isClosed) {
+    if (target[1].connected) {
       targetSocket.updates([
         ['recovery', ''],
         ['code', ''],

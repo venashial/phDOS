@@ -1,6 +1,4 @@
-import { WebSocket } from 'https://deno.land/std@0.108.0/ws/mod.ts'
-
-export interface Socket extends WebSocket {
+export interface Socket extends globalThis.WebSocket {
   json: (data: unknown) => void,
   updates: (updates: Array<Array<unknown>>) => void,
   secret: string
