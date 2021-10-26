@@ -1,6 +1,7 @@
 import { RoomRoute, Card } from '../types.ts'
 import { rooms } from '../db.ts'
-import { sockets } from '../sockets.ts'
+import { updateAll } from '../lib/updateAll.ts'
+import shuffle from '../lib/shuffle.ts'
 
 /** Move a card to and from: a player's hand, the discard pile, & the draw pile */
 export default ({ body, socket, room, code }: RoomRoute): void => {
@@ -42,31 +43,25 @@ export default ({ body, socket, room, code }: RoomRoute): void => {
     logMessage[2] = 'to their hand'
   }
 
+  if ([body.destination, body.source].includes('draw')) {
+    room.piles.draw = shuffle(room.piles.draw)
+  }
+
+  if (room.piles.draw.length < room.piles.discard.length) {
+    //room.piles.draw = Object.entries(room.piles.discard).
+  }
+
+  room.log.push({
+    time: new Date(Date.now()).toISOString(),
+    message: logMessage.join(' '),
+  })
+
   room.lastActivity = new Date(Date.now()).toISOString()
   rooms.updateOne({ code }, room)
 
-  if ([body.destination, body.source].includes('discard')) {
-    Object.keys(room.players).forEach((player) => {
-      sockets.get(player)?.updates([['discard', room.piles.discard]])
-    })
-  }
-
   socket.updates([['hand', room.players[socket.secret].hand]])
-
-  Object.keys(room.players).forEach((player) => {
-    const playerSocket = sockets.get(player)
-    if (playerSocket) {
-      playerSocket.updates([
-        [
-          'players',
-          Object.values(room.players).map((player) => ({
-            nickname: player.nickname,
-            count: Object.keys(player.hand).length,
-            isHost: player.isHost,
-            connected: player.connected,
-          })),
-        ],
-      ])
-    }
-  })
+  updateAll(room, [
+    ['discard', room.piles.discard],
+    ['log', room.log],
+  ])
 }

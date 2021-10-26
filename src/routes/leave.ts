@@ -1,8 +1,13 @@
 import { RoomRoute } from '../types.ts'
 import { rooms } from '../db.ts'
 import { sockets } from '../sockets.ts'
+import { publicizePlayers, updateAll } from '../lib/updateAll.ts'
 
-export default async ({ body, socket, room, code }: RoomRoute): Promise<void> => {
+export default async ({
+  socket,
+  room,
+  code,
+}: RoomRoute): Promise<void> => {
   socket.updates([
     ['recovery', ''],
     ['code', ''],
@@ -15,7 +20,7 @@ export default async ({ body, socket, room, code }: RoomRoute): Promise<void> =>
     url: '/',
     message: `You left the room.`,
   })
-
+  
   if (room.players[socket.secret].isHost) {
     // Host left
     const newHost = Object.entries(room.players).find(
@@ -46,20 +51,16 @@ export default async ({ body, socket, room, code }: RoomRoute): Promise<void> =>
 
   delete room.players[socket.secret]
 
+  room.log.push({
+    time: new Date(Date.now()).toISOString(),
+    message: `${room.players[socket.secret].nickname} left the game.`,
+  })
+
   room.lastActivity = new Date(Date.now()).toISOString()
   await rooms.updateOne({ code }, room)
 
-  Object.keys(room.players).forEach((player) => {
-    sockets.get(player)?.updates([
-      [
-        'players',
-        Object.values(room.players).map((player) => ({
-          nickname: player.nickname,
-          count: Object.keys(player.hand).length,
-          isHost: player.isHost,
-          connected: player.connected,
-        })),
-      ],
-    ])
-  })
+  updateAll(room, [
+    ['players', publicizePlayers(room)],
+    ['log', room.log],
+  ])
 }

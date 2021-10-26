@@ -4,6 +4,7 @@ import generateSecret from '../lib/generateSecret.ts'
 import { rooms } from '../db.ts'
 import { sockets } from '../sockets.ts'
 import dealCards from '../lib/dealCards.ts'
+import { publicizePlayers, updateAll } from "../lib/updateAll.ts";
 
 export default async ({ body, socket }: Route): Promise<void> => {
   if (body?.nickname && typeof body.nickname === 'string') {
@@ -44,6 +45,11 @@ export default async ({ body, socket }: Route): Promise<void> => {
   room.players[socket.secret].hand = hand
   room.piles.draw = draw
 
+  room.log.push({
+    time: (new Date(Date.now())).toISOString(),
+    message: `${body.nickname} joined the game.`,
+  })
+
   room.lastActivity = (new Date(Date.now())).toISOString()
   rooms.updateOne({ code: body.code }, room)
 
@@ -55,15 +61,8 @@ export default async ({ body, socket }: Route): Promise<void> => {
     ['hand', room.players[socket.secret].hand],
     ['discard', room.piles.discard],
   ])
-  Object.keys(room.players).forEach(player => {
-    sockets.get(player)?.updates([[
-      'players',
-      Object.values(room.players).map((player) => ({
-        nickname: player.nickname,
-        count: Object.keys(player.hand).length,
-        isHost: player.isHost,
-        connected: player.connected,
-      })),
-    ],])
-  })
+  updateAll(room, [
+    ['players', publicizePlayers(room)],
+    ['log', room.log],
+  ])
 }

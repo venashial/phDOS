@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  phdos:
+    image: phdos
+    volumes:
+      - phdos:/Users/Shared/Code-Workspace/Web/phuno-server
+    ports:
+      - 8080:8080
+
+volumes:
+  phdos:

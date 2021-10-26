@@ -25,6 +25,10 @@ export interface Card {
 
 export type Stack = Record<string, Card>
 
+export interface LogMessage {
+  time: string,
+  message: string,
+}
 export interface Room {
   code: string,
   lastActivity: string,
@@ -43,5 +47,5 @@ export interface Room {
     discard: Stack,
     draw: Stack,
   },
-  log: string[],
+  log: LogMessage[],
 }

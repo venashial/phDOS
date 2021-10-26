@@ -1,24 +1,22 @@
 import { RoomRoute, Card } from '../types.ts'
 import { rooms } from '../db.ts'
-import { sockets } from '../sockets.ts'
+import { publicizePlayers, updateAll } from '../lib/updateAll.ts'
 
 /** Move a card to and from: a player's hand, the discard pile, & the draw pile */
 export default ({ body, socket, room, code }: RoomRoute): void => {
-  
-  Object.keys(room.players).forEach((player) => {
-    const playerSocket = sockets.get(player)
-    if (playerSocket) {
-      playerSocket.updates([
-        [
-          'players',
-          Object.values(room.players).map((player) => ({
-            nickname: player.nickname,
-            count: Object.keys(player.hand).length,
-            isHost: player.isHost,
-            connected: player.connected,
-          })),
-        ],
-      ])
-    }
-  })
+  if (room.players[socket.secret]) {
+    room.players[socket.secret].connected = false
+
+    room.log.push({
+      time: new Date(Date.now()).toISOString(),
+      message: `${room.players[socket.secret].nickname} got disconnected.`,
+    })
+
+    rooms.updateOne({ code }, room)
+
+    updateAll(room, [
+      ['players', publicizePlayers(room)],
+      ['log', room.log],
+    ])
+  }
 }

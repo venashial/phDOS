@@ -2,6 +2,7 @@ import { Route } from '../types.ts'
 import { sockets } from '../sockets.ts'
 import generateSecret from '../lib/generateSecret.ts'
 import { rooms } from '../db.ts'
+import { publicizePlayers } from '../lib/updateAll.ts'
 
 export default async ({ body, socket }: Route): Promise<void> => {
   let recovered = false
@@ -10,15 +11,22 @@ export default async ({ body, socket }: Route): Promise<void> => {
     if (typeof body.recovery === 'string' && body.recovery.length > 0) {
       const code = body.recovery.substring(0, 5)
       const room = await rooms.findOne({ code })
-  
+
       if (room !== null) {
-        const index = Object.values(room.players).map(it => it.recovery).indexOf(body.recovery)
+        const index = Object.values(room.players)
+          .map((it) => it.recovery)
+          .indexOf(body.recovery)
+
         if (index !== -1) {
           console.log(`Recovered player to ${code}`)
           recovered = true
           const secret = Object.keys(room.players)[index]
           socket.secret = secret
           sockets.set(secret, socket)
+
+          room.players[secret].connected = true
+          rooms.updateOne({ code }, room)
+
           socket.updates([
             ['code', room.code],
             ['recovery', room.players[socket.secret].recovery],
@@ -27,20 +35,12 @@ export default async ({ body, socket }: Route): Promise<void> => {
             ['isHost', room.players[socket.secret].isHost],
             ['hand', room.players[socket.secret].hand],
             ['discard', room.piles.discard],
-            [
-              'players',
-              Object.values(room.players).map((player) => ({
-                nickname: player.nickname,
-                count: Object.keys(player.hand).length,
-                isHost: player.isHost,
-                connected: player.connected,
-              })),
-            ]
+            ['players', publicizePlayers(room)],
           ])
         }
       }
     }
-    
+
     if (!recovered) {
       console.log('Registering new player')
       const secret = generateSecret()

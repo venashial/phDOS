@@ -1,6 +1,7 @@
 import { RoomRoute } from '../types.ts'
 import { rooms } from '../db.ts'
 import { sockets } from '../sockets.ts'
+import { publicizePlayers, updateAll } from "../lib/updateAll.ts";
 
 export default ({ body, socket, room, code }: RoomRoute): void => {
   if (!body?.target || typeof body.target !== 'string') {
@@ -42,20 +43,16 @@ export default ({ body, socket, room, code }: RoomRoute): void => {
 
   delete room.players[target[0]]
 
+  room.log.push({
+    time: (new Date(Date.now())).toISOString(),
+    message: `${body.nickname} was kicked by ${room.players[socket.secret].nickname} from the game.`,
+  })
+
   room.lastActivity = new Date(Date.now()).toISOString()
   rooms.updateOne({ code }, room)
 
-  Object.keys(room.players).forEach((player) => {
-    sockets.get(player)?.updates([
-      [
-        'players',
-        Object.values(room.players).map((player) => ({
-          nickname: player.nickname,
-          count: Object.keys(player.hand).length,
-          isHost: player.isHost,
-          connected: player.connected,
-        })),
-      ],
-    ])
-  })
+  updateAll(room, [
+    ['players', publicizePlayers(room)],
+    ['log', room.log],
+  ])
 }

@@ -6,6 +6,7 @@ import { rooms } from '../db.ts'
 import makeDeck from '../lib/makeDeck.ts'
 import shuffle from '../lib/shuffle.ts'
 import dealCards from '../lib/dealCards.ts'
+import { publicizePlayers } from "../lib/updateAll.ts";
 
 export default async ({ body, socket }: Route): Promise<void> => {
   if (body.nickname && typeof body.nickname === 'string') {
@@ -40,7 +41,12 @@ export default async ({ body, socket }: Route): Promise<void> => {
       discard: {},
       draw: shuffle(makeDeck()),
     },
-    log: [],
+    log: [
+      {
+        time: (new Date(Date.now())).toISOString(),
+        message: `${body.nickname} created this room.`,
+      }
+    ],
   }
 
   const { draw, hand } = dealCards(room.piles.draw)
@@ -55,12 +61,7 @@ export default async ({ body, socket }: Route): Promise<void> => {
     ['recovery', room.players[socket.secret].recovery],
     [
       'players',
-      Object.values(room.players).map((player) => ({
-        nickname: player.nickname,
-        count: Object.keys(player.hand).length,
-        isHost: player.isHost,
-        connected: player.connected,
-      })),
+      publicizePlayers(room),
     ],
     ['state', 'lobby'],
     ['nickname', body.nickname],

@@ -77,7 +77,7 @@ async function handleWs(sock: WebSocket) {
             }
           
             if (!Object.keys(room.players).includes(socket.secret)) {
-              socket.json({ error: "You are't in that room" })
+              socket.json({ error: "You aren't in that room" })
               return
             }
 
