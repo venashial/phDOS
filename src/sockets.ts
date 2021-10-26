@@ -59,13 +59,13 @@ async function serveHttp(conn: Deno.Conn) {
       }
       //socket.onopen = () => console.log('socket opened')
       socket.onmessage = async (ev) => {
-        if (typeof ev === 'string') {
+        if (typeof ev.data === 'string') {
           try {
             const data: {
               route: keyof typeof routes
               body: Record<string, unknown>
               secret?: string
-            } = JSON.parse(ev)
+            } = JSON.parse(ev.data)
   
             if (['create', 'register', 'join'].includes(data.route)) {
               // @ts-ignore: Route is already limited to not RoomRoutes
