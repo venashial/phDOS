@@ -61,7 +61,6 @@ export default ({ body, socket, room, code }: RoomRoute): void => {
     message: logMessage.join(' '),
   })
 
-  room.lastActivity = new Date(Date.now()).toISOString()
   rooms.updateOne({ code }, room)
 
   socket.updates([['hand', room.players[socket.secret].hand]])

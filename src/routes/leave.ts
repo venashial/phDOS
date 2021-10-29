@@ -56,7 +56,6 @@ export default async ({
     message: `${room.players[socket.secret].nickname} left the game.`,
   })
 
-  room.lastActivity = new Date(Date.now()).toISOString()
   await rooms.updateOne({ code }, room)
 
   updateAll(room, [

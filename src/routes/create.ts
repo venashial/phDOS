@@ -26,7 +26,6 @@ export default async ({ body, socket }: Route): Promise<void> => {
 
   const room = {
     code,
-    lastActivity: (new Date(Date.now())).toISOString(),
     state: 'lobby',
     players: {
       [socket.secret]: {

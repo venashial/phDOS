@@ -55,7 +55,6 @@ export default async ({ body, socket }: Route): Promise<void> => {
     message: `${body.nickname} joined the game.`,
   })
 
-  room.lastActivity = (new Date(Date.now())).toISOString()
   rooms.updateOne({ code: body.code }, room)
 
   socket.updates([

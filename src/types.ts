@@ -29,7 +29,6 @@ export interface LogMessage {
 }
 export interface Room {
   code: string,
-  lastActivity: string,
   state: string,
   players: Record<
     string,

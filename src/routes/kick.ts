@@ -48,7 +48,6 @@ export default ({ body, socket, room, code }: RoomRoute): void => {
     message: `${body.nickname} was kicked by ${room.players[socket.secret].nickname} from the game.`,
   })
 
-  room.lastActivity = new Date(Date.now()).toISOString()
   rooms.updateOne({ code }, room)
 
   updateAll(room, [
