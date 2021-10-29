@@ -43,7 +43,9 @@ async function serveHttp(conn: Deno.Conn) {
       path === '/ws' &&
       requestEvent.request.headers.get('upgrade') === 'websocket'
     ) {
-      const { socket: sock, response } = Deno.upgradeWebSocket(requestEvent.request)
+      const { socket: sock, response } = Deno.upgradeWebSocket(
+        requestEvent.request
+      )
       const socket: Socket = Object.assign(sock)
       socket.json = function (data: unknown) {
         this.send(JSON.stringify(data))
@@ -66,7 +68,7 @@ async function serveHttp(conn: Deno.Conn) {
               body: Record<string, unknown>
               secret?: string
             } = JSON.parse(ev.data)
-  
+
             if (['create', 'register', 'join'].includes(data.route)) {
               // @ts-ignore: Route is already limited to not RoomRoutes
               await routes[data.route]({ body: data.body, socket })
@@ -81,17 +83,17 @@ async function serveHttp(conn: Deno.Conn) {
                 return
               }
               const room = await rooms.findOne({ code: data.body.code })
-  
+
               if (room === null) {
                 socket.json({ error: "That room doesn't exist" })
                 return
               }
-  
+
               if (!Object.keys(room.players).includes(socket.secret)) {
                 socket.json({ error: "You aren't in that room" })
                 return
               }
-  
+
               await routes[data.route]({
                 body: data.body,
                 socket,
@@ -104,7 +106,9 @@ async function serveHttp(conn: Deno.Conn) {
           }
         }
       }
-      socket.onerror = (ev) => console.log('socket errored:', ev)
+      socket.onerror = (ev) => {
+        console.log('socket errored:', ev)
+      }
       socket.onclose = (ev) => {
         const { code, reason } = ev
         console.log('Websocket closed', code, reason)

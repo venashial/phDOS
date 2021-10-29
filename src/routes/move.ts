@@ -47,8 +47,13 @@ export default ({ body, socket, room, code }: RoomRoute): void => {
     room.piles.draw = shuffle(room.piles.draw)
   }
 
-  if (room.piles.draw.length < room.piles.discard.length) {
-    //room.piles.draw = Object.entries(room.piles.discard).
+  if (Object.keys(room.piles.draw).length < Object.keys(room.piles.discard).length - 6) {
+    // get all of discard except for last 5 cards
+    const discardEntries = Object.entries(room.piles.discard)
+    // update discard to last 5 cards
+    room.piles.discard = Object.fromEntries(discardEntries.slice(0, 5))
+    // add other part with draw pile (shuffled)
+    room.piles.draw = shuffle(Object.fromEntries(discardEntries.slice(5, discardEntries.length - 1)))
   }
 
   room.log.push({

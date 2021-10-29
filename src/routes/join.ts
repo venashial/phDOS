@@ -32,6 +32,11 @@ export default async ({ body, socket }: Route): Promise<void> => {
     return
   }
 
+  if (Object.values(room.players).map(player => player.nickname).includes(body.nickname)) {
+    socket.json({ error: `Choose a different name, someone in the room already is named "${body.nickname}"."` })
+    return
+  }
+
   room.players[socket.secret] = {
     nickname: body.nickname,
     recovery: body.code + generateSecret(),

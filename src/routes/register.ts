@@ -36,6 +36,7 @@ export default async ({ body, socket }: Route): Promise<void> => {
             ['hand', room.players[socket.secret].hand],
             ['discard', room.piles.discard],
             ['players', publicizePlayers(room)],
+            ['log', room.log],
           ])
         }
       }
