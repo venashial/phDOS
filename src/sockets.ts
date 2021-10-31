@@ -117,6 +117,19 @@ async function serveHttp(conn: Deno.Conn) {
         }
       }
       requestEvent.respondWith(response)
+    } else if (path === '/api/roomExists') {
+      try {
+        const room = await rooms.findOne({ code: await requestEvent.request.json() })
+        requestEvent.respondWith(
+          new Response(JSON.stringify(room !== null), {
+            status: 200,
+          })
+        )
+      } catch {
+        new Response('Couldn\'t read code', {
+          status: 400,
+        })
+      }
     } else {
       requestEvent.respondWith(
         new Response('This is a phDOS server.', {
